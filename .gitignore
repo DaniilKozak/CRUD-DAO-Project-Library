@@ -1,0 +1,62 @@
+# ======================
+# IntelliJ IDEA
+# ======================
+
+# User-specific stuff
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf/
+
+# Plugin-specific stuff
+.idea/**/dbnavigator.xml
+.idea/**/httpRequests/
+.idea/**/sonarlint/
+
+# Avoid IntelliJ project files except core configs
+*.iml
+*.ipr
+*.iws
+
+# IDEA build output
+out/
+
+# ======================
+# Java
+# ======================
+
+# Compiled class files
+*.class
+
+# Log files
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+*.jad
+*.jar
+*.war
+*.ear
+
+# Virtual machine crash logs
+hs_err_pid*
+replay_pid*
+
+# ======================
+# OS-specific
+# ======================
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
