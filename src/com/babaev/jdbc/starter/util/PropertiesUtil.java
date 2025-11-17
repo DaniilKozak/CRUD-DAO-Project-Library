@@ -1,5 +1,7 @@
 package com.babaev.jdbc.starter.util;
 
+import com.babaev.jdbc.starter.exception.DaoException;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
@@ -24,7 +26,7 @@ public final class PropertiesUtil {
                 .getResourceAsStream("application.properties")) {
             PROPERTIES.load(inputStream);
         }catch (IOException e){
-            throw new RuntimeException(e);
+            throw new DaoException(e);
         }
     }
 }
