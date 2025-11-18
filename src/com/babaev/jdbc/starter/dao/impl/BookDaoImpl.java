@@ -12,27 +12,27 @@ import java.util.Optional;
 public class BookDaoImpl implements BookDao {
 
     private static final String INSERT_SQL = """
-        INSERT INTO book (title, author, isbn)
-        VALUES (?, ?, ?)
-        """;
+            INSERT INTO book (title, author, isbn)
+            VALUES (?, ?, ?)
+            """;
 
     private static final String FIND_BY_ID_SQL = """
-        SELECT * FROM book WHERE id = ?
-        """;
+            SELECT * FROM book WHERE id = ?
+            """;
 
     private static final String FIND_ALL_SQL = """
-        SELECT * FROM book
-        """;
+            SELECT * FROM book
+            """;
 
     private static final String UPDATE_SQL = """
-        UPDATE book
-        SET title = ?, author = ?, isbn = ?
-        WHERE id = ?
-        """;
+            UPDATE book
+            SET title = ?, author = ?, isbn = ?
+            WHERE id = ?
+            """;
 
     private static final String DELETE_SQL = """
-        DELETE FROM book WHERE id = ?
-        """;
+            DELETE FROM book WHERE id = ?
+            """;
 
     @Override
     public Book save(Book book) {
@@ -56,11 +56,8 @@ public class BookDaoImpl implements BookDao {
         }
     }
 
-    @Override
-    public Optional<Book> findById(Long id) {
-        try (var connection = ConnectionManager.get();
-             var stmt = connection.prepareStatement(FIND_BY_ID_SQL)) {
-
+    public Optional<Book> findById(Long id, Connection connection) {
+        try (var stmt = connection.prepareStatement(FIND_BY_ID_SQL)) {
             stmt.setLong(1, id);
 
             try (var rs = stmt.executeQuery()) {
@@ -68,9 +65,16 @@ public class BookDaoImpl implements BookDao {
                     return Optional.of(map(rs));
                 }
             }
-
             return Optional.empty();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find book by id", e);
+        }
+    }
 
+    @Override
+    public Optional<Book> findById(Long id) {
+        try (var connection = ConnectionManager.get()){
+             return findById(id, connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to find book by id", e);
         }
