@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 public class BookCopyDaoImpl implements BookCopyDao {
-    private BookDaoImpl bookDao = new BookDaoImpl();
+    private static final BookDaoImpl bookDao = new BookDaoImpl();
 
     private static final String INSERT_SQL = """
         INSERT INTO book_copy (book_id, inventory_number, status)
@@ -60,11 +60,8 @@ public class BookCopyDaoImpl implements BookCopyDao {
         }
     }
 
-    @Override
-    public Optional<BookCopy> findById(Long id) {
-        try (var connection = ConnectionManager.get();
-             var stmt = connection.prepareStatement(FIND_BY_ID_SQL)) {
-
+    public Optional<BookCopy> findById(Long id, Connection connection){
+        try(var stmt = connection.prepareStatement(FIND_BY_ID_SQL)) {
             stmt.setLong(1, id);
 
             try (var rs = stmt.executeQuery()) {
@@ -72,9 +69,16 @@ public class BookCopyDaoImpl implements BookCopyDao {
                     return Optional.of(map(rs));
                 }
             }
-
             return Optional.empty();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find book copy", e);
+        }
+    }
 
+    @Override
+    public Optional<BookCopy> findById(Long id) {
+        try (var connection = ConnectionManager.get()){
+            return findById(id, connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to find book copy", e);
         }
@@ -128,7 +132,7 @@ public class BookCopyDaoImpl implements BookCopyDao {
     }
 
     private BookCopy map(ResultSet rs) throws SQLException {
-        Book book = bookDao.findById(rs.getLong("id")).orElse(null);
+        Book book = bookDao.findById(rs.getLong("id"), rs.getStatement().getConnection()).orElse(null);
         Status status = Status.fromString(rs.getString("status"));
         return new BookCopy(
                 rs.getLong("id"),

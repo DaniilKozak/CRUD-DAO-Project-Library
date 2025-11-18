@@ -61,20 +61,25 @@ public class ReaderDaoImpl implements ReaderDao {
         }
     }
 
-    @Override
-    public Optional<Reader> findById(Long id) {
-        try (var connection = ConnectionManager.get();
-             var stmt = connection.prepareStatement(FIND_BY_ID_SQL)) {
-
+    public Optional<Reader> findById(Long id, Connection connection) {
+        try (var stmt = connection.prepareStatement(FIND_BY_ID_SQL)) {
             stmt.setLong(1, id);
+
             try (var rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     return Optional.of(map(rs));
                 }
             }
-
             return Optional.empty();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find reader by id", e);
+        }
+    }
 
+    @Override
+    public Optional<Reader> findById(Long id) {
+        try (var connection = ConnectionManager.get()){
+             return findById(id, connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to find reader by id", e);
         }
@@ -87,13 +92,10 @@ public class ReaderDaoImpl implements ReaderDao {
              var rs = stmt.executeQuery()) {
 
             List<Reader> list = new ArrayList<>();
-
             while (rs.next()) {
                 list.add(map(rs));
             }
-
             return list;
-
         } catch (SQLException e) {
             throw new RuntimeException("Failed to get all readers", e);
         }

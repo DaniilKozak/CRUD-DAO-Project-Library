@@ -14,6 +14,8 @@ import java.util.List;
 import java.util.Optional;
 
 public class LoanDaoImpl implements LoanDao {
+    private static final ReaderDaoImpl readerDao = new ReaderDaoImpl();
+    private static final BookCopyDaoImpl bookCopyDao = new BookCopyDaoImpl();
 
     private static final String INSERT_SQL = """
         INSERT INTO loan (reader_id, copy_id, date_taken, date_due, date_returned)
@@ -132,8 +134,8 @@ public class LoanDaoImpl implements LoanDao {
     }
 
     private Loan map(ResultSet rs) throws SQLException {
-        Reader reader = new ReaderDaoImpl().findById(rs.getLong("id")).orElse(null);
-        BookCopy copy = new BookCopyDaoImpl().findById(rs.getLong("copy_id")).orElse(null);
+        Reader reader = readerDao.findById(rs.getLong("id"), rs.getStatement().getConnection()).orElse(null);
+        BookCopy copy = bookCopyDao.findById(rs.getLong("copy_id"), rs.getStatement().getConnection()).orElse(null);
         return new Loan(
                 rs.getLong("id"),
                 reader,
