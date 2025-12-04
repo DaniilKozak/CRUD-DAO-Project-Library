@@ -2,6 +2,7 @@ package com.babaev.jdbc.starter.dao.impl;
 
 import com.babaev.jdbc.starter.dao.ReaderDao;
 import com.babaev.jdbc.starter.entity.Reader;
+import com.babaev.jdbc.starter.exception.DaoException;
 import com.babaev.jdbc.starter.util.ConnectionManager;
 
 import java.sql.*;
@@ -10,6 +11,29 @@ import java.util.List;
 import java.util.Optional;
 
 public class ReaderDaoImpl implements ReaderDao {
+
+    private static final String DETERMINE_BLACKLIST_SQL = """
+            SELECT EXISTS(SELECT 1 FROM loan l
+                          JOIN reader r ON l.reader_id = r.id
+                          WHERE l.date_due > now() AND l.date_returned IS NULL AND r.id = ?)
+            """;
+
+    private static final String GET_BLACKLIST_SQL = """
+            SELECT
+                bk.id,
+                b.title,
+                l.date_due
+            FROM loan l
+            LEFT JOIN reader r ON l.id=r.id
+            LEFT JOIN book_copy bk on bk.id = l.copy_id
+            LEFT JOIN book b on b.id = bk.book_id
+            WHERE l.date_due > now() AND l.date_returned IS NULL AND r.id = ?
+            """;
+
+    private static final String IS_BLACK_LISTED_SQL = """
+            SELECT black_listed FROM reader
+            WHERE id = ?
+            """;
 
     private static final String INSERT_SQL = """
             INSERT INTO reader (first_name, last_name, email, phone_number, registration_date, black_listed)
@@ -33,6 +57,52 @@ public class ReaderDaoImpl implements ReaderDao {
     private static final String DELETE_SQL = """
             DELETE FROM reader WHERE id = ?
             """;
+
+    public boolean determineBlacklist(Reader reader) {
+        try (var connection = ConnectionManager.get();
+             var stmt = connection.prepareStatement(DETERMINE_BLACKLIST_SQL)) {
+            stmt.setLong(1, reader.getId());
+            try (var resultSet = stmt.executeQuery()) {
+                resultSet.next();
+                return resultSet.getBoolean(1);
+            }
+        } catch (SQLException e) {
+            throw new DaoException(e);
+        }
+    }
+
+    public List<String> getListDebts(Reader reader) {
+        List<String> list = new ArrayList<>();
+        try (var connection = ConnectionManager.get();
+             var stmt = connection.prepareStatement(GET_BLACKLIST_SQL)) {
+            stmt.setLong(1, reader.getId());
+            try (var resultSet = stmt.executeQuery()) {
+                while (resultSet.next()) {
+                    StringBuilder sb = new StringBuilder()
+                            .append("Book id is " + resultSet.getLong("id") + ", ")
+                            .append("title of book is " + resultSet.getString("title") + ", ")
+                            .append("due date is " + resultSet.getDate("date_due"));
+                    list.add(sb.toString());
+                }
+                return list;
+            }
+        } catch (SQLException e) {
+            throw new DaoException(e);
+        }
+    }
+
+    public boolean isBlackListed(Reader reader) {
+        try (var connection = ConnectionManager.get();
+             var stmt = connection.prepareStatement(IS_BLACK_LISTED_SQL)) {
+            stmt.setLong(1, reader.getId());
+            try (var resultSet = stmt.executeQuery()) {
+                resultSet.next();
+                return resultSet.getBoolean(1);
+            }
+        } catch (SQLException e) {
+            throw new DaoException(e);
+        }
+    }
 
     @Override
     public Reader save(Reader reader) {
@@ -78,8 +148,8 @@ public class ReaderDaoImpl implements ReaderDao {
 
     @Override
     public Optional<Reader> findById(Long id) {
-        try (var connection = ConnectionManager.get()){
-             return findById(id, connection);
+        try (var connection = ConnectionManager.get()) {
+            return findById(id, connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to find reader by id", e);
         }
