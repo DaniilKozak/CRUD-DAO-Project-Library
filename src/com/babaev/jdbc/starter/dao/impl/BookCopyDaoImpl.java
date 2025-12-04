@@ -4,6 +4,7 @@ import com.babaev.jdbc.starter.dao.BookCopyDao;
 import com.babaev.jdbc.starter.entity.Book;
 import com.babaev.jdbc.starter.entity.BookCopy;
 import com.babaev.jdbc.starter.enumeration.Status;
+import com.babaev.jdbc.starter.exception.DaoException;
 import com.babaev.jdbc.starter.util.ConnectionManager;
 
 import java.sql.*;
@@ -14,28 +15,90 @@ import java.util.Optional;
 public class BookCopyDaoImpl implements BookCopyDao {
     private static final BookDaoImpl bookDao = new BookDaoImpl();
 
+    private static final String FIND_BY_BOOK_ID_SQL = """
+            SELECT * FROM book_copy
+            WHERE book_id = ? AND status = ?
+            LIMIT 1
+            """;
+
+    private static final String FIND_IS_AVAILABLE_BOOK_COPY_BY_BOOK_ID_SQL = """
+            SELECT EXISTS(SELECT 1 FROM book_copy
+                         WHERE book_id = ? AND status = ?)
+            """;
+
+    private static final String FIND_IS_AVAILABLE_BOOK_COPY_BY_BOOK_TITLE_SQL = """
+            SELECT EXISTS(SELECT 1 FROM book_copy bk
+            JOIN book b ON b.id = bk.book_id
+            WHERE b.title = ? AND bk.status = ?)
+            """;
+
     private static final String INSERT_SQL = """
-        INSERT INTO book_copy (book_id, inventory_number, status)
-        VALUES (?, ?, ?)
-        """;
+            INSERT INTO book_copy (book_id, inventory_number, status)
+            VALUES (?, ?, ?)
+            """;
 
     private static final String FIND_BY_ID_SQL = """
-        SELECT * FROM book_copy WHERE id = ?
-        """;
+            SELECT * FROM book_copy WHERE id = ?
+            """;
 
     private static final String FIND_ALL_SQL = """
-        SELECT * FROM book_copy
-        """;
+            SELECT * FROM book_copy
+            """;
 
     private static final String UPDATE_SQL = """
-        UPDATE book_copy
-        SET book_id = ?, inventory_number = ?, status = ?
-        WHERE id = ?
-        """;
+            UPDATE book_copy
+            SET book_id = ?, inventory_number = ?, status = ?
+            WHERE id = ?
+            """;
 
     private static final String DELETE_SQL = """
-        DELETE FROM book_copy WHERE id = ?
-        """;
+            DELETE FROM book_copy WHERE id = ?
+            """;
+
+    public Optional<BookCopy> findByBookId(Long bookId) {
+        BookCopy bookCopy = null;
+        try (var connection = ConnectionManager.get();
+             var stmt = connection.prepareStatement(FIND_BY_BOOK_ID_SQL)) {
+            stmt.setLong(1, bookId);
+            stmt.setString(2, Status.AVAILABLE.name());
+            try (var resultSet = stmt.executeQuery()) {
+                if(resultSet.next()){
+                    bookCopy = map(resultSet);
+                }
+                return Optional.ofNullable(bookCopy);
+            }
+        } catch (SQLException e) {
+            throw new DaoException(e);
+        }
+    }
+
+    public boolean isAvailableBookCopyById(Long id) {
+        try (var connection = ConnectionManager.get();
+             var stmt = connection.prepareStatement(FIND_IS_AVAILABLE_BOOK_COPY_BY_BOOK_ID_SQL)) {
+            stmt.setLong(1, id);
+            stmt.setString(2, Status.AVAILABLE.name());
+            try (var rs = stmt.executeQuery()) {
+                rs.next();
+                return rs.getBoolean(1);
+            }
+        } catch (SQLException e) {
+            throw new DaoException(e);
+        }
+    }
+
+    public boolean isAvailableBookCopyByBookTitle(String bookTitle) {
+        try (var connection = ConnectionManager.get();
+             var stmt = connection.prepareStatement(FIND_IS_AVAILABLE_BOOK_COPY_BY_BOOK_TITLE_SQL)) {
+            stmt.setString(1, bookTitle);
+            stmt.setString(2, Status.AVAILABLE.name());
+            try (var rs = stmt.executeQuery()) {
+                rs.next();
+                return rs.getBoolean(1);
+            }
+        } catch (SQLException e) {
+            throw new DaoException(e);
+        }
+    }
 
     @Override
     public BookCopy save(BookCopy copy) {
@@ -60,8 +123,8 @@ public class BookCopyDaoImpl implements BookCopyDao {
         }
     }
 
-    public Optional<BookCopy> findById(Long id, Connection connection){
-        try(var stmt = connection.prepareStatement(FIND_BY_ID_SQL)) {
+    public Optional<BookCopy> findById(Long id, Connection connection) {
+        try (var stmt = connection.prepareStatement(FIND_BY_ID_SQL)) {
             stmt.setLong(1, id);
 
             try (var rs = stmt.executeQuery()) {
@@ -77,7 +140,7 @@ public class BookCopyDaoImpl implements BookCopyDao {
 
     @Override
     public Optional<BookCopy> findById(Long id) {
-        try (var connection = ConnectionManager.get()){
+        try (var connection = ConnectionManager.get()) {
             return findById(id, connection);
         } catch (SQLException e) {
             throw new RuntimeException("Failed to find book copy", e);
